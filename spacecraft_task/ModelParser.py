@@ -47,3 +47,6 @@ class ModelParser():
                 normals_list_part.append((-np.cross(a, b)).tolist())
             normals_list.append(normals_list_part)
         return parts_list, normals_list
+    
+    def getAreas(self):
+        raise NotImplementedError('not implemented yet')

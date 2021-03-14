@@ -75,14 +75,13 @@ class ModelParser():
                     for second_surface in second_part:
                         for vert in surface:
                             for second_vert in second_surface:
-                                
+                                #
                                 if (vert[1] == second_vert[1])  and (not vert in tmp_verts):
                                     polygon_vert_x.append(vert[0])
                                     polygon_vert_z.append(vert[2])
                                     tmp_verts.append(vert)
 
                 surfaces_area_btw_parts[i, i + j + 1] = self._poly_area(polygon_vert_x, polygon_vert_z)
-                print(i, j, len(polygon_vert_x), self._poly_area(polygon_vert_x, polygon_vert_z))
 
         for i in range(1, len(parts_list)):
             for j in range(i, len(parts_list)):

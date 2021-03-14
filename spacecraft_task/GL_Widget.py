@@ -1,41 +1,132 @@
 from OpenGL.GL import *
 from OpenGL.GLU import *
 from PyQt5.QtOpenGL import *
+from PyQt5.QtCore import Qt, pyqtSignal
+import numpy as np
 class GL_Widget(QGLWidget):
+    xRotationChanged = pyqtSignal(int)
+    yRotationChanged = pyqtSignal(int)
+    zRotationChanged = pyqtSignal(int)
     def __init__(self, parent=None, parts_list=None, normals_list=None, temperature=None):
         QGLWidget.__init__(self, parent)
         self.setMinimumSize(1000, 1000)
         self.parts_list = parts_list
         self.normals_list = normals_list
-        self.color_r  = np.zeros(len(self.parts_list))
         self.temperature = temperature
-        self.max_temp = 40
+        self.max_temp = np.max(self.temperature)
+        self.xRot = 0
+        self.yRot = 0
+        self.zRot = 0
+        self.color = np.zeros(self.temperature.shape[1])
 
     def paintGL(self):
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         glLoadIdentity()
 
+        #draw color bar
+        glBegin(GL_QUADS)
+        x = -5.5
+        y = 0
+        for temp in np.arange(0, self.max_temp.astype(np.int32), 0.1):
+            glColor3f(self._colormap_red(temp/self.max_temp), self._colormap_green(temp/self.max_temp), self._colormap_blue(temp/self.max_temp))
+            glVertex3f(x, 0, -4)
+            glVertex3f(x, y, -4)
+            glVertex3f(x + 0.3, y, -4) 
+            glVertex3f(x + 0.3, 0, -4)
+            y += 0.01
+            
+        glEnd()
+
+
         gluLookAt(-2.5, 0, -6, -3, 0, 0, 0, 0, 1)
         glTranslatef(-9, 0, 6)
-        
         glRotatef(240, 1, 1, 1)
+        glRotated(self.xRot / 16.0, 1.0, 0.0, 0.0)
+        glRotated(self.yRot / 16.0, 0.0, 1.0, 0.0)
+        glRotated(self.zRot / 16.0, 0.0, 0.0, 1.0)
 
         glPolygonMode(GL_FRONT, GL_FILL)
         glBegin(GL_TRIANGLES)
 
-        for part_vertex, part_normals in zip(self.parts_list, self.normals_list):
-            glColor3f(self.color_r[], 0.1, 0.0)
+        for i, (part_vertex, part_normals) in enumerate(zip(self.parts_list, self.normals_list)):
+            glColor3f(self._colormap_red(self.color[i]), self._colormap_green(self.color[i]), self._colormap_blue(self.color[i]))
             for surface, surface_normal in zip(part_vertex, part_normals):
                 glNormal3fv(surface_normal)
                 for vertex in surface:
                     glVertex3fv(vertex)
-
         glEnd()
+
+       
         glFlush()
+    def _colormap_red(self, x):
+        if x < 0.7: 
+            return 4.0 * x - 1.5
+        else: 
+            return -4.0 * x + 4.5
+    
+    def _colormap_green(self, x):
+        if x < 0.5: 
+            return 4.0 * x - 0.5
+        else: 
+            return -4.0 * x + 3.5
+
+    def _colormap_blue(self, x):
+        if x < 0.3: 
+            return 4.0 * x + 0.5
+        else: 
+            return -4.0 * x + 2.5
+
+    def setXRotation(self, angle):
+        self.normalizeAngle(angle)
+
+        if angle != self.xRot:
+            self.xRot = angle
+            self.xRotationChanged.emit(angle)
+            self.update()
+
+    def setYRotation(self, angle):
+        self.normalizeAngle(angle)
+
+        if angle != self.yRot:
+            self.yRot = angle
+            self.yRotationChanged.emit(angle)
+            self.update()
+
+    def setZRotation(self, angle):
+        self.normalizeAngle(angle)
+
+        if angle != self.zRot:
+            self.zRot = angle
+            self.zRotationChanged.emit(angle)
+            self.update()
+            
+    def normalizeAngle(self, angle):
+        while (angle < 0):
+            angle += 360 * 16
+
+        while (angle > 360 * 16):
+            angle -= 360 * 16
+            
+    def mouseMoveEvent(self, event):
+        dx = event.x() - self.lastPos.x()
+        dy = event.y() - self.lastPos.y()
+
+        if event.buttons() & Qt.LeftButton:
+            self.setXRotation(self.xRot + 8 * dy)
+            self.setYRotation(self.yRot + 8 * dx)
+        elif event.buttons() & Qt.RightButton:
+            self.setXRotation(self.xRot + 8 * dy)
+            self.setZRotation(self.zRot + 8 * dx)
+
+        self.lastPos = event.pos()
+
+    def mousePressEvent(self, event):
+        self.lastPos = event.pos()
+
 
     def initializeGL(self):
         glClearDepth(1.0)     
-        glLight(GL_LIGHT0, GL_POSITION,  (5, 5, 5, 1)) # point light from the left, top, front
+        glLight(GL_LIGHT0, GL_POSITION,  (-9, 0, 6, 1)) # point light from the left, top, front
         glLightfv(GL_LIGHT0, GL_AMBIENT, (0, 0, 0, 1))
         glLightfv(GL_LIGHT0, GL_DIFFUSE, (1, 1, 1, 1))
 
@@ -44,7 +135,6 @@ class GL_Widget(QGLWidget):
 
         glEnable(GL_COLOR_MATERIAL)
         glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE )
-
         #glDepthFunc(GL_LESS)
         glEnable(GL_DEPTH_TEST)
         glShadeModel(GL_SMOOTH)
@@ -54,6 +144,7 @@ class GL_Widget(QGLWidget):
         glMatrixMode(GL_MODELVIEW)
     
     def setTemp(self, val):
-        self.color_r = self.temperature[val] / self.max_temp
-        self.paintGL()
+        #self.color = val / len(self.temperature)
+        self.color = self.temperature[val] / self.max_temp
+        self.update()
 

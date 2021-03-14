@@ -19,12 +19,16 @@ class Ui_MainWindow(QtWidgets.QWidget):
         surfaces_area, surfaces_area_btw_parts = self.model_parser.getAreas(parts_list)
         self.heat_solver = HeatBalanceSolver('parametrs.csv', surfaces_area, surfaces_area_btw_parts)
         self.solve = self.heat_solver.solve(0, 20)
-
-
         self.glWidget = GL_Widget(parts_list=parts_list, normals_list=normals_list, temperature=self.solve)
-        
         h_layout = QtWidgets.QHBoxLayout()
         v_layout = QtWidgets.QVBoxLayout()
+
+        self.slider = QtWidgets.QSlider(Qt.Horizontal, self)
+        QtWidgets.QSlider.setMaximum(self.slider, len(self.solve) - 1)
+        self.slider.valueChanged.connect(lambda val: self.glWidget.setTemp(val))
+
+        v_layout.addWidget(self.slider)
+
         h_layout.addWidget(self.glWidget)
 
         # a figure instance to plot on 
@@ -36,12 +40,9 @@ class Ui_MainWindow(QtWidgets.QWidget):
         h_layout.addWidget(self.canvas)
         v_layout.addLayout(h_layout)
 
-        self.slider = QtWidgets.QSlider(Qt.Horizontal, self)
-        self.slider.valueChanged.connect(lambda val: self.glWidget.setTemp(val))
-
-        v_layout.addWidget(self.slider)
-
+       
         self.setLayout(v_layout)
+        self.showMaximized() 
 
     def plot(self):
         self.figure.clear() 

@@ -75,7 +75,7 @@ class ModelParser():
                     for second_surface in second_part:
                         for vert in surface:
                             for second_vert in second_surface:
-                                #
+                                #according to model if surfaces have same y-cord, means that they intersect 
                                 if (vert[1] == second_vert[1])  and (not vert in tmp_verts):
                                     polygon_vert_x.append(vert[0])
                                     polygon_vert_z.append(vert[2])

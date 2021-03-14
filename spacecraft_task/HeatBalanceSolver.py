@@ -1,7 +1,6 @@
 import pandas as pd
 from scipy.integrate import odeint
 import numpy as np
-from py_expression_eval import Parser
 from scipy.optimize import fsolve
 
 class HeatBalanceSolver():
@@ -14,7 +13,6 @@ class HeatBalanceSolver():
         self.amount_elemnts = len(self.area_btw_surfaces)
 
         self.parse_parametrs()
-        self.A = 100
 
     def _equation(self, T, t):
         dTdt = []
@@ -25,8 +23,7 @@ class HeatBalanceSolver():
                 tmp_eq += k * (T[j] - T[i])
             q_e = -self.epsilon[i] * self.surfaces_area[i] * self.c_0 * ((T[i] / 100) ** 4)
 
-            if i == 1:
-                tmp_eq += q_e + self.A*(20 + 3 * np.cos(t/4))
+            tmp_eq += q_e + self.A[i]*(20 + 3 * np.cos(t/4))
 
             dTdt.append(tmp_eq / self.c[i])
         return dTdt
@@ -46,15 +43,37 @@ class HeatBalanceSolver():
             for j in range(i, self.amount_elemnts):
                 self.lambdas[j, i] = self.lambdas[i, j]
 
-        for value in parametrs_df['q_r']:
-            self.q_r.append(value)
-
+        self.A = parametrs_df['A']
+    def _stationary_equation(self, T):
+        equations = []
+        for i in range(self.amount_elemnts):
+            tmp_eq = 0
+            for j in range(self.amount_elemnts):
+                k = self.lambdas[i, j] * self.area_btw_surfaces[i, j]
+                tmp_eq += k * (T[j] - T[i])
+            q_e = -self.epsilon[i] * self.surfaces_area[i] * self.c_0 * ((T[i] / 100) ** 4)
+            tmp_eq += q_e
+            equations.append(tmp_eq / self.c[i])
+        return equations
 
     def get_stationary_solution(self):
-        return fsolve(self._equation, np.zeros(self.amount_elemnts), args=(0.0))
+        return fsolve(self._stationary_equation, np.zeros(self.amount_elemnts))
+    
+    def save_solution(self, solution, time):
+        solution_dict = {}
+        solution_dict['time'] = time.tolist()
+        for i in range(solution.shape[1]):
+            solution_dict['temp_elemnt_{}'.format(i + 1)] = solution[:, i]
+        df = pd.DataFrame(solution_dict)
+        df.to_csv('solution.csv')
+
+
+
 
     def solve(self, t0, t1):
-        t = np.linspace(t0, t1)
-        init_cond =  np.zeros(5)#self.get_stationary_solution()
+        N = 100
+        t = np.linspace(t0, t1, N)
+        init_cond = self.get_stationary_solution()
         sol = odeint(self._equation, init_cond, t)
+        self.save_solution(sol, t)
         return sol

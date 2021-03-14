@@ -9,33 +9,33 @@ class GL_Widget(QGLWidget):
     zRotationChanged = pyqtSignal(int)
     def __init__(self, parent=None, parts_list=None, normals_list=None, temperature=None):
         QGLWidget.__init__(self, parent)
-        self.setMinimumSize(1000, 1000)
+        self.setMinimumSize(800, 800)
         self.parts_list = parts_list
         self.normals_list = normals_list
         self.temperature = temperature
-        self.max_temp = np.max(self.temperature)
         self.xRot = 0
         self.yRot = 0
         self.zRot = 0
-        self.color = np.zeros(self.temperature.shape[1])
+        self.color = np.zeros(len(parts_list))
 
     def paintGL(self):
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         glLoadIdentity()
 
-        #draw color bar
-        glBegin(GL_QUADS)
-        x = -5.5
-        y = 0
-        for temp in np.arange(0, self.max_temp.astype(np.int32), 0.1):
-            glColor3f(self._colormap_red(temp/self.max_temp), self._colormap_green(temp/self.max_temp), self._colormap_blue(temp/self.max_temp))
-            glVertex3f(x, 0, -4)
-            glVertex3f(x, y, -4)
-            glVertex3f(x + 0.3, y, -4) 
-            glVertex3f(x + 0.3, 0, -4)
-            y += 0.01
-            
-        glEnd()
+        if self.temperature is not None:
+            #draw color bar
+            glBegin(GL_QUADS)
+            x = -5.5
+            y = 0
+            for temp in np.arange(0, self.max_temp.astype(np.int32), self.max_temp/200):
+                glColor3f(self._colormap_red(temp/self.max_temp), self._colormap_green(temp/self.max_temp), self._colormap_blue(temp/self.max_temp))
+                glVertex3f(x, 0, -4)
+                glVertex3f(x, y, -4)
+                glVertex3f(x + 0.3, y, -4) 
+                glVertex3f(x + 0.3, 0, -4)
+                y += 0.01
+                
+            glEnd()
 
 
         gluLookAt(-2.5, 0, -6, -3, 0, 0, 0, 0, 1)
@@ -55,8 +55,6 @@ class GL_Widget(QGLWidget):
                 for vertex in surface:
                     glVertex3fv(vertex)
         glEnd()
-
-       
         glFlush()
     def _colormap_red(self, x):
         if x < 0.7: 
@@ -135,7 +133,6 @@ class GL_Widget(QGLWidget):
 
         glEnable(GL_COLOR_MATERIAL)
         glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE )
-        #glDepthFunc(GL_LESS)
         glEnable(GL_DEPTH_TEST)
         glShadeModel(GL_SMOOTH)
         glMatrixMode(GL_PROJECTION)
@@ -143,8 +140,11 @@ class GL_Widget(QGLWidget):
         gluPerspective(70.0, 2, 1, 100.0) 
         glMatrixMode(GL_MODELVIEW)
     
-    def setTemp(self, val):
-        #self.color = val / len(self.temperature)
+    def setTempSlider(self, val):
         self.color = self.temperature[val] / self.max_temp
         self.update()
 
+    def setTemperature(self, temp):
+        self.temperature = temp
+        self.max_temp = np.max(self.temperature)
+        self.update()

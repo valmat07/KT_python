@@ -4,14 +4,14 @@ import numpy as np
 from scipy.optimize import fsolve
 
 class HeatBalanceSolver():
-    def __init__(self, parametrs_file_name, surfaces_area, area_btw_surfaces):
+    def __init__(self, parametrs_file_name, surfaces_area, area_btw_surfaces, save_dir):
         super(HeatBalanceSolver, self).__init__()
         self.parametrs_file_name = parametrs_file_name
         self.surfaces_area = surfaces_area
         self.area_btw_surfaces = area_btw_surfaces
         self.c_0 = 5.67
         self.amount_elemnts = len(self.area_btw_surfaces)
-
+        self.save_dir = save_dir
         self.parse_parametrs()
 
     def _equation(self, T, t):
@@ -65,7 +65,7 @@ class HeatBalanceSolver():
         for i in range(solution.shape[1]):
             solution_dict['temp_elemnt_{}'.format(i + 1)] = solution[:, i]
         df = pd.DataFrame(solution_dict)
-        df.to_csv('solution.csv')
+        df.to_csv(self.save_dir + 'solution.csv')
 
 
 

@@ -4,7 +4,7 @@ import numpy as np
 from scipy.optimize import fsolve
 
 class HeatBalanceSolver():
-    def __init__(self, parametrs_file_name, surfaces_area, area_btw_surfaces, save_dir):
+    def __init__(self, parametrs_file_name, surfaces_area, area_btw_surfaces, save_dir=''):
         super(HeatBalanceSolver, self).__init__()
         self.parametrs_file_name = parametrs_file_name
         self.surfaces_area = surfaces_area
@@ -12,7 +12,7 @@ class HeatBalanceSolver():
         self.c_0 = 5.67
         self.amount_elemnts = len(self.area_btw_surfaces)
         self.save_dir = save_dir
-        self.parse_parametrs()
+        self._parse_parametrs()
 
     def _equation(self, T, t):
         dTdt = []
@@ -23,12 +23,11 @@ class HeatBalanceSolver():
                 tmp_eq += k * (T[j] - T[i])
             q_e = -self.epsilon[i] * self.surfaces_area[i] * self.c_0 * ((T[i] / 100) ** 4)
 
-            tmp_eq += q_e + self.A[i]*(20 + 3 * np.cos(t/4))
-
+            tmp_eq += q_e + self.A[i] * (20 + 3 * np.cos(t/4))
             dTdt.append(tmp_eq / self.c[i])
         return dTdt
 
-    def parse_parametrs(self):
+    def _parse_parametrs(self):
         parametrs_df = pd.read_csv(self.parametrs_file_name)
         self.epsilon = np.array(parametrs_df['eps'])
         self.c = np.array(parametrs_df['c'])
@@ -39,11 +38,13 @@ class HeatBalanceSolver():
         for i in range(self.lambdas.shape[0] - 1):
             self.lambdas[i] = np.array(parametrs_df['lambdas_{}_x'.format(i + 1)])
         
+        self.lambdas[:, 0] = self.lambdas[0, :]
         for i in range(1, self.amount_elemnts):
             for j in range(i, self.amount_elemnts):
                 self.lambdas[j, i] = self.lambdas[i, j]
 
-        self.A = parametrs_df['A']
+        self.A = np.array(parametrs_df['A'], dtype=np.float32)
+
     def _stationary_equation(self, T):
         equations = []
         for i in range(self.amount_elemnts):
@@ -57,9 +58,24 @@ class HeatBalanceSolver():
         return equations
 
     def get_stationary_solution(self):
+        '''
+        Returns stationary solution for heat balance equantion.
+        
+        Returns:
+            numpy array containing solution by scipy.fsolve
+        '''
         return fsolve(self._stationary_equation, np.zeros(self.amount_elemnts))
     
     def save_solution(self, solution, time):
+        '''
+        Save solution of heat balance equation to solution.csv file.
+        To select a folder use save_dir member.
+        
+        Parameters:
+            solution (array): array containing solution.
+            time (array): array containing time for solution.
+        
+        '''
         solution_dict = {}
         solution_dict['time'] = time.tolist()
         for i in range(solution.shape[1]):
@@ -68,10 +84,18 @@ class HeatBalanceSolver():
         df.to_csv(self.save_dir + 'solution.csv')
 
 
-
-
     def solve(self, t0, t1):
-        N = 100
+        '''
+        Returns solution for heat balance equantion
+        
+        Parameters:
+            t0 (float): start time.
+            t1 (float): end time.
+        
+        Returns:
+            sol:numpy array containing solution by scipy.odeint
+        '''
+        N = t1*4
         t = np.linspace(t0, t1, N)
         init_cond = self.get_stationary_solution()
         sol = odeint(self._equation, init_cond, t)

@@ -1,5 +1,4 @@
 import numpy as np
-from numpy.linalg import norm
 class ModelParser():
     def __init__(self, file_name=None):
         super(ModelParser, self).__init__()
@@ -8,12 +7,13 @@ class ModelParser():
 
     def parse(self):
         '''
-        return parts_list, normal_list
-            parts_list-list of vertices by each part of model
-            normals_list-list of normales by each part for model
+        Parse .obj file and returns lists of vertices and normals.
+
+        Returns:
+            parts_list:list of vertices for each part of model
+            normals_list:list of normals for each part for model
         '''
         vertexList = []
-        finalVertices = []
         parts_list = []
         one_part_list = []
         with open(self.file_name, 'r') as objFile:
@@ -45,20 +45,31 @@ class ModelParser():
             for surface in part:
                 a = np.array(surface[2]) - np.array(surface[0])
                 b = np.array(surface[1]) - np.array(surface[0])
-                normals_list_part.append((-np.cross(a, b)).tolist())
+                cross_product = -np.cross(a, b)
+                normals_list_part.append((cross_product / np.linalg.norm(cross_product)).tolist())
             normals_list.append(normals_list_part)
 
         return parts_list, normals_list
    
     def _triangle_area(self, a, b, c) :
         a, b, c = np.array(a), np.array(b), np.array(c)
-        return 0.5 * norm(np.cross(b - a, c - a))
+        return 0.5 * np.linalg.norm(np.cross(b - a, c - a))
     
     def _poly_area(self, x, y):
         x, y = np.array(x), np.array(y)
         return 0.5 * np.abs(np.dot(x, np.roll(y, 1)) - np.dot(y, np.roll(x, 1)))
 
     def getAreas(self, parts_list):
+        '''
+        Returns areas for each part and areas between every two part
+        
+        Parameters:
+            parts_list (lst): list of model parts.
+        
+        Returns:
+            surfaces_area:numpy array containing areas for each part
+            surfaces_area_btw_parts:matrix containing intersection areas between parts.
+        '''
         surfaces_area = np.zeros(len(parts_list))
         surfaces_area_btw_parts = np.zeros((len(parts_list), len(parts_list)))
 
@@ -83,6 +94,7 @@ class ModelParser():
 
                 surfaces_area_btw_parts[i, i + j + 1] = self._poly_area(polygon_vert_x, polygon_vert_z)
 
+        surfaces_area_btw_parts[:, 0] = surfaces_area_btw_parts[0, :]
         for i in range(1, len(parts_list)):
             for j in range(i, len(parts_list)):
                 surfaces_area_btw_parts[j, i] = surfaces_area_btw_parts[i, j]

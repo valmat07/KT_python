@@ -17,18 +17,21 @@ class GL_Widget(QGLWidget):
         self.yRot = 0
         self.zRot = 0
         self.color = np.zeros(len(parts_list))
+        
 
     def paintGL(self):
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         glLoadIdentity()
 
+  
         if self.temperature is not None:
             #draw color bar
             glBegin(GL_QUADS)
             x = -5.5
             y = 0
-            for temp in np.arange(0, self.max_temp.astype(np.int32), self.max_temp/200):
-                glColor3f(self._colormap_red(temp/self.max_temp), self._colormap_green(temp/self.max_temp), self._colormap_blue(temp/self.max_temp))
+            max_temp_range = self.max_temp.astype(np.int32) + abs(self.min_temp.astype(np.int32))
+            for temp in np.arange(0, max_temp_range, max_temp_range/300):
+                glColor3f(self._colormap_red(temp/max_temp_range), self._colormap_green(temp/max_temp_range), self._colormap_blue(temp/max_temp_range))
                 glVertex3f(x, 0, -4)
                 glVertex3f(x, y, -4)
                 glVertex3f(x + 0.3, y, -4) 
@@ -124,7 +127,7 @@ class GL_Widget(QGLWidget):
 
     def initializeGL(self):
         glClearDepth(1.0)     
-        glLight(GL_LIGHT0, GL_POSITION,  (-9, 0, 6, 1)) # point light from the left, top, front
+        glLight(GL_LIGHT0, GL_POSITION,  (-9, 0, 3, 1)) # point light from the left, top, front
         glLightfv(GL_LIGHT0, GL_AMBIENT, (0, 0, 0, 1))
         glLightfv(GL_LIGHT0, GL_DIFFUSE, (1, 1, 1, 1))
 
@@ -134,6 +137,7 @@ class GL_Widget(QGLWidget):
         glEnable(GL_COLOR_MATERIAL)
         glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE )
         glEnable(GL_DEPTH_TEST)
+        glDepthFunc(GL_LESS)
         glShadeModel(GL_SMOOTH)
         glMatrixMode(GL_PROJECTION)
         glLoadIdentity()                    
@@ -141,10 +145,12 @@ class GL_Widget(QGLWidget):
         glMatrixMode(GL_MODELVIEW)
     
     def setTempSlider(self, val):
-        self.color = self.temperature[val] / self.max_temp
+        self.color = (self.temperature[val] - self.min_temp) / (self.max_temp - self.min_temp)
         self.update()
-
+ 
     def setTemperature(self, temp):
         self.temperature = temp
         self.max_temp = np.max(self.temperature)
+        self.min_temp = np.min(self.temperature)
+        self.color = (self.temperature[0] - self.min_temp) / (self.max_temp - self.min_temp)
         self.update()

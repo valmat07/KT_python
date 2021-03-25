@@ -2,6 +2,7 @@ from OpenGL.GL import *
 from OpenGL.GLU import *
 from PyQt5.QtOpenGL import *
 from PyQt5.QtCore import Qt, pyqtSignal
+import OpenGL.GLUT as glut
 import numpy as np
 class GL_Widget(QGLWidget):
     xRotationChanged = pyqtSignal(int)
@@ -23,13 +24,12 @@ class GL_Widget(QGLWidget):
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         glLoadIdentity()
 
-  
         if self.temperature is not None:
             #draw color bar
             glBegin(GL_QUADS)
             x = -5.5
             y = 0
-            max_temp_range = self.max_temp.astype(np.int32) + abs(self.min_temp.astype(np.int32))
+            max_temp_range = self.max_temp + abs(self.min_temp)
             for temp in np.arange(0, max_temp_range, max_temp_range/300):
                 glColor3f(self._colormap_red(temp/max_temp_range), self._colormap_green(temp/max_temp_range), self._colormap_blue(temp/max_temp_range))
                 glVertex3f(x, 0, -4)
@@ -150,7 +150,7 @@ class GL_Widget(QGLWidget):
  
     def setTemperature(self, temp):
         self.temperature = temp
-        self.max_temp = np.max(self.temperature)
-        self.min_temp = np.min(self.temperature)
+        self.max_temp = 200#np.max(self.temperature)
+        self.min_temp = -20#np.min(self.temperature)
         self.color = (self.temperature[0] - self.min_temp) / (self.max_temp - self.min_temp)
         self.update()

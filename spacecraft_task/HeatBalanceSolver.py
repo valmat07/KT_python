@@ -1,5 +1,5 @@
 import pandas as pd
-from scipy.integrate import odeint
+from scipy.integrate import odeint, solve_ivp
 import numpy as np
 from scipy.optimize import fsolve
 
@@ -45,7 +45,7 @@ class HeatBalanceSolver():
 
         self.A = np.array(parametrs_df['A'], dtype=np.float32)
 
-    def _stationary_equation(self, T):
+    def _stationary_equation(self, T, t):
         equations = []
         for i in range(self.amount_elemnts):
             tmp_eq = 0
@@ -53,7 +53,7 @@ class HeatBalanceSolver():
                 k = self.lambdas[i, j] * self.area_btw_surfaces[i, j]
                 tmp_eq += k * (T[j] - T[i])
             q_e = -self.epsilon[i] * self.surfaces_area[i] * self.c_0 * ((T[i] / 100) ** 4)
-            tmp_eq += q_e
+            tmp_eq += q_e + self.A[i] * (20 + 3 * np.cos(t/4))
             equations.append(tmp_eq / self.c[i])
         return equations
 
@@ -64,7 +64,8 @@ class HeatBalanceSolver():
         Returns:
             numpy array containing solution by scipy.fsolve
         '''
-        return fsolve(self._stationary_equation, np.zeros(self.amount_elemnts))
+        #return fsolve(self._stationary_equation, np.zeros(self.amount_elemnts))
+        return fsolve(self._stationary_equation, np.zeros(self.amount_elemnts), args=(0.0))
     
     def save_solution(self, solution, time):
         '''
@@ -97,7 +98,9 @@ class HeatBalanceSolver():
         '''
         N = t1*4
         t = np.linspace(t0, t1, N)
-        init_cond = self.get_stationary_solution()
+        init_cond = np.zeros(5)#self.get_stationary_solution()
+        #solution_class = solve_ivp(self._equation, t, init_cond, dense_output=True)
+        #sol = solution_class.sol(t).T
         sol = odeint(self._equation, init_cond, t)
         self.save_solution(sol, t)
         return sol

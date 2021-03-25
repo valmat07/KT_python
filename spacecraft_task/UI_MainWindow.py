@@ -46,6 +46,13 @@ class Ui_MainWindow(QtWidgets.QWidget):
 
 
         slider_layout = QtWidgets.QHBoxLayout()
+        self.colorbar_txt =  QtWidgets.QLabel()
+        self.colorbar_txt.setFont(QtGui.QFont("Times", 10, QtGui.QFont.Bold))
+        self.colorbar_txt.setText('Min value in colorbar: -10 \nMax value in colorbar: 200')
+        slider_layout.addWidget(self.colorbar_txt)
+
+        self.spacer = QtWidgets.QSpacerItem(100, 0, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed)
+        slider_layout.addItem(self.spacer)
 
         self.time_txt =  QtWidgets.QLabel()
         self.time_txt.setText('Set maximum time: ')
@@ -55,6 +62,14 @@ class Ui_MainWindow(QtWidgets.QWidget):
         self.time_value_txt = QtWidgets.QLineEdit()
         slider_layout.addWidget(self.time_value_txt)
         self.time_value_txt.setText('20')
+
+        
+
+        self.slider_txt =  QtWidgets.QLabel()
+        self.slider_txt.setText('Temperature slider: ')
+        slider_layout.addWidget(self.slider_txt)
+
+        
 
         self.slider = QtWidgets.QSlider(Qt.Horizontal, self)
         self.slider.valueChanged.connect(lambda val: self.glWidget.setTempSlider(val))

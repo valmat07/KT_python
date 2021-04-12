@@ -11,8 +11,8 @@ positions =  np.array([[0.0, 0.0], [0.31, 0.1], [0.72, 0.11], [1.0, 0.12], [1.56
 
 solver = GravitationalSolver(weights, speeds, positions)
 
-sol = solver.solve_verlet(max_time=1000, dt=1e0)
-#sol = solver.solve_odeint()
+#sol = solver.solve_verlet(max_time=10000, dt=1e0)
+sol = solver.solve_odeint()
 pos_x, pos_y = sol[:, :10], sol[:, 10:20] 
 
 amount_planets = 10
@@ -28,5 +28,5 @@ colors = [[1.0, 1.0, 0.0],
           [0.0, 0.3, 0.6]
 ]
 
-anim = AnimatedScatter(np.array([pos_x/ 1.496e11, pos_y/ 1.496e11]), colors=colors)
+anim = AnimatedScatter(np.array([pos_x[::10]/ 1.496e11, pos_y[::10]/ 1.496e11]), colors=colors)
 plt.show()

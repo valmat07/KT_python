@@ -10,14 +10,14 @@ class GravitationalSolver():
         self.init_position = init_position
 
     def solve_odeint(self):
-        t = np.linspace(0, 100, 1000)
-        init_cond = np.concatenate((self.init_position[:, 0], self.init_position[:, 1], self.init_speed, self.init_speed))
-        solution_class = solve_ivp(self._ode_equation, t, init_cond, dense_output=True)
-        sol = solution_class.sol(t).T
-        #sol = odeint(self._ode_equation, init_cond, t)
+        t = np.linspace(0, 1000, 1000)
+        init_cond = np.concatenate((self.init_position[:, 0], self.init_position[:, 1], np.zeros(10), self.init_speed))
+        #solution_class = solve_ivp(self._ode_equation, t, init_cond, dense_output=True)
+        #sol = solution_class.sol(t).T
+        sol = odeint(self._ode_equation, init_cond, t)
         return sol
         
-    def _ode_equation(self, t, y):
+    def _ode_equation(self, y, t):
         drdt_x, dvdt_x, dvdt_y, drdt_y  = [], [], [], []
         positions_x, positions_y = y[:self.amount_elements], y[self.amount_elements:2*self.amount_elements]   
         speeds_x, speeds_y = y[2*self.amount_elements:3*self.amount_elements], y[3*self.amount_elements:] 
@@ -25,15 +25,10 @@ class GravitationalSolver():
         for i in range(self.amount_elements):
             drdt_x.append(speeds_x[i])
             drdt_y.append(speeds_y[i])
-            v_equation_x, v_equation_y = 0, 0
-
-            for j in range(self.amount_elements):
-                if j == i:
-                    continue
-                v_equation_x +=  self.gravi_const * self.weights[j] * (positions_x[j] - positions_x[i])/np.abs((positions_x[j] - positions_x[i]) ** 3)
-                v_equation_y +=  self.gravi_const * self.weights[j] * (positions_y[j] - positions_y[i])/np.abs((positions_y[j] - positions_y[i]) ** 3)
-            dvdt_x.append(v_equation_x)
-            dvdt_y.append(v_equation_y)
+            
+            acceleration_x, acceleration_y = self._calc_accelerations(positions_x, positions_y, i)
+            dvdt_x.append(acceleration_x)
+            dvdt_y.append(acceleration_y)
 
         dydt = drdt_x
         dydt.extend(drdt_y)

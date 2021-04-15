@@ -26,7 +26,6 @@ class AnimatedScatter(object):
 
     def update(self, i):
         """Update the scatter plot."""
-        print(i)
         i = i % self.data.shape[1]
         x, y = self.data[0, i][..., np.newaxis], self.data[1, i][..., np.newaxis]
         self.scat.set_offsets(np.concatenate((x, y), axis=-1))

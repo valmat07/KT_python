@@ -7,7 +7,7 @@ from concurrent.futures import ThreadPoolExecutor
 from concurrent import futures
 import multiprocessing
 from functools import partial
-
+import cython_solve
 dt = 1e0
 gravi_const = 6.6742 * 1e-11 * (3600 ** 2)
 def _calc_accelerations_mp(x_pos, y_pos, weights, i):
@@ -184,7 +184,15 @@ class GravitationalSolver():
                 speed_x[n + 1], speed_y[n + 1] = results[:, 0], results[:, 1]
         return np.concatenate((x_pos, y_pos, speed_x, speed_y), axis=-1)
     
-    def solve_verlet_cython(self, max_time, dt)
+    def solve_verlet_cython(self, max_time, dt):
+        return cython_solve.cypthon_solve(max_time, 
+                                            dt, 
+                                            self.amount_elements, 
+                                            self.init_position,
+                                            self.init_speed,
+                                            self.weights
+                                            )
+
     def plot_solution(self, solution, i):
         solution = solution[i]
         positions_x, positions_y = solution[:self.amount_elements], solution[self.amount_elements:2*self.amount_elements]

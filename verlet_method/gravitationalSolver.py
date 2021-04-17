@@ -9,6 +9,7 @@ import multiprocessing
 from functools import partial
 import cython_solve
 from multiprocessing import Process, Queue
+from threading import Thread
 
 dt = 1e0
 gravi_const = 6.6742 * 1e-11 * (3600 ** 2)
@@ -129,18 +130,16 @@ class GravitationalSolver():
 
         return np.concatenate((x_pos, y_pos, speed_x, speed_y), axis=-1)
 
-    def solve_verlet_threading(self, max_time, dt):
-        def _calc_positions_verlet(x_pos, y_pos, speed_x, speed_y, i):
-            acceleration_x, acceleration_y = self._calc_accelerations(x_pos, y_pos, i)
-            tmp1 = x_pos[i] + speed_x[i] * dt + acceleration_x * (dt ** 2) / 2
-            tmp2 = y_pos[i] + speed_y[i] * dt + acceleration_y * (dt ** 2) / 2
-            return tmp1, tmp2, acceleration_x, acceleration_y, i
+    def solve_verlet_threading_pool(self, max_time, dt):
+        def _calc_positions_verlet(x_pos_curr, y_pos_curr, speed_x_curr, speed_y_curr, i, n):
+            acceleration_x[i], acceleration_y[i] = self._calc_accelerations(x_pos_curr, y_pos_curr, i)
+            x_pos[n + 1, i] = x_pos_curr[i] + speed_x_curr[i] * dt + acceleration_x[i] * (dt ** 2) / 2
+            y_pos[n + 1, i] = y_pos_curr[i] + speed_y_curr[i] * dt + acceleration_y[i] * (dt ** 2) / 2
 
-        def _calc_speeds_verlet(x_pos, y_pos, speed_x, speed_y, i):
-            acceleration_x_next, acceleration_y_next = self._calc_accelerations(x_pos, y_pos, i)
-            tmp1 = speed_x[i]  + 0.5 * (acceleration_x_next + acceleration_x[i]) * dt
-            tmp2 = speed_y[i]  + 0.5 * (acceleration_y_next + acceleration_y[i]) * dt
-            return tmp1, tmp2, i
+        def _calc_speeds_verlet(x_pos_curr, y_pos_curr, speed_x_curr, speed_y_curr, i, n):
+            acceleration_x_next, acceleration_y_next = self._calc_accelerations(x_pos_curr, y_pos_curr, i)
+            speed_x[n + 1, i] = speed_x_curr[i]  + 0.5 * (acceleration_x_next + acceleration_x[i]) * dt
+            speed_y[n + 1, i] = speed_y_curr[i]  + 0.5 * (acceleration_y_next + acceleration_y[i]) * dt
 
         N = int(max_time / dt)
         x_pos = np.zeros((N, self.amount_elements))
@@ -153,32 +152,49 @@ class GravitationalSolver():
         
         for n in range(N - 1):
             acceleration_x, acceleration_y = np.zeros(self.amount_elements), np.zeros(self.amount_elements)
-    
-            with ThreadPoolExecutor(max_workers=self.amount_elements) as executor:
-                jobs = []
-                for i in range(self.amount_elements):
-                    jobs.append(executor.submit(_calc_positions_verlet, x_pos=x_pos[n], y_pos=y_pos[n], speed_x=speed_x[n], speed_y=speed_y[n], i=i))
-
-                for job in futures.as_completed(jobs):
-                    result_done = job.result()
-                    i = result_done[-1]
-                    x_pos[n + 1, i], y_pos[n + 1, i] = result_done[0], result_done[1]
-                    acceleration_x[i], acceleration_y[i] = result_done[2], result_done[3]
-
-            with ThreadPoolExecutor(max_workers=self.amount_elements) as executor:
-                jobs = []
-                for i in range(self.amount_elements):
-                    jobs.append(executor.submit(_calc_speeds_verlet, x_pos=x_pos[n + 1], y_pos=y_pos[n + 1], speed_x=speed_x[n], speed_y=speed_y[n], i=i))
-
-                for job in futures.as_completed(jobs):
-                    result_done = job.result()
-                    i = result_done[-1]
-                    speed_x[n + 1, i], speed_y[n + 1, i] = result_done[0], result_done[1]
-
             
+            with ThreadPoolExecutor(max_workers=self.amount_elements) as executor:
+                jobs = []
+                for i in range(self.amount_elements):
+                    jobs.append(executor.submit(_calc_positions_verlet, x_pos_curr=x_pos[n],
+                                                                        y_pos_curr=y_pos[n], 
+                                                                        speed_x_curr=speed_x[n], 
+                                                                        speed_y_curr=speed_y[n], 
+                                                                        i=i, 
+                                                                        n=n))
+
+            with ThreadPoolExecutor(max_workers=self.amount_elements) as executor:
+                jobs = []
+                for i in range(self.amount_elements):
+                    jobs.append(executor.submit(_calc_speeds_verlet, x_pos_curr=x_pos[n + 1], 
+                                                                     y_pos_curr=y_pos[n + 1], 
+                                                                     speed_x_curr=speed_x[n], 
+                                                                     speed_y_curr=speed_y[n], 
+                                                                     i=i, 
+                                                                     n=n))
 
         return np.concatenate((x_pos, y_pos, speed_x, speed_y), axis=-1)
     
+    def solve_verlet_threading(self, max_time, dt):
+        N = int(max_time / dt)
+        pos_queue, speed_queue = Queue(), Queue()
+        return_pos_queue, return_speed_queue = Queue(), Queue()
+        #create threads. First process for calc position, second for speeds
+        pos_thread = Thread(target=_calc_pos_prosess, args=(N, self.amount_elements, self.init_position, pos_queue, speed_queue, return_pos_queue))
+        speed_thread = Thread(target=_clac_speed_prosess, args=(N, self.amount_elements, self.init_speed, pos_queue, speed_queue, return_speed_queue))
+
+        pos_thread.start()
+        speed_thread.start()
+
+        pos_thread.join()
+        x_pos, y_pos = return_pos_queue.get()
+
+        speed_thread.join()
+        speed_x, speed_y = return_speed_queue.get()
+
+        return np.concatenate((x_pos, y_pos, speed_x, speed_y), axis=-1)
+
+
     def solve_verlet_multitasking(self, max_time, dt):
         N = int(max_time / dt)
         pos_queue, speed_queue = Queue(), Queue()

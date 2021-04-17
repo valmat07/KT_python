@@ -14,28 +14,32 @@ if __name__ == '__main__':
     speeds = np.array([0.0, 58.93, 35.18, 29.66, 23.6, 13.03, 10.16, 6.52, 5.43, 5.97]) * 3600 * 1000  #convert to metrs per hours
     positions =  np.array([[0.0, 0.0], [0.31, 0.1], [0.72, 0.11], [1.0, 0.12], [1.56, 0.13], [5.21, 0.14], [9.05, 0.15], [20.0, 0.16], [30.09, 0.17], [30.5, 0.18]]) * 1.496e11
 
-    amount_repeat = 10
+    amount_repeat = 23
     solver = GravitationalSolver(weights.repeat(amount_repeat), speeds.repeat(amount_repeat), positions.repeat(amount_repeat, axis=0))
     #solver = GravitationalSolver(weights, speeds, positions)
 
-    max_time = 10
+    max_time = 20
     
     start_time = time.time()
     sol = solver.solve_verlet(max_time=max_time, dt=1e0)
     print("--- %s seconds(pure) ---\n\n" % (time.time() - start_time))
 
-    # start_time = time.time()
-    # sol_mt = solver.solve_verlet_multitasking(max_time=max_time, dt=1e0)
-    # print("--- %s seconds(multiprocessing) ---\n\n" % (time.time() - start_time))
+    start_time = time.time()
+    sol_mt = solver.solve_verlet_multitasking(max_time=max_time, dt=1e0)
+    print("--- %s seconds(multiprocessing) ---\n\n" % (time.time() - start_time))
+
+    start_time = time.time()
+    sol_pool = solver.solve_verlet_threading_pool(max_time=max_time, dt=1e0)
+    print("--- %s seconds(threadin_pool) --- \n\n" % (time.time() - start_time))
 
     start_time = time.time()
     sol = solver.solve_verlet_threading(max_time=max_time, dt=1e0)
     print("--- %s seconds(threadin) --- \n\n" % (time.time() - start_time))
+
+    start_time = time.time()
+    sol = solver.solve_verlet_cython(max_time=max_time, dt=1e0)
+    print("--- %s seconds(cython) ---" % (time.time() - start_time))
     exit()
-    # start_time = time.time()
-    # sol = solver.solve_verlet_cython(max_time=max_time, dt=1e0)
-    # print("--- %s seconds(cython) ---" % (time.time() - start_time))
-    # exit()
     #sol = solver.solve_odeint()
     pos_x, pos_y = sol[:, :10], sol[:, 10:20] 
 

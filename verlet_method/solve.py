@@ -14,11 +14,11 @@ if __name__ == '__main__':
     speeds = np.array([0.0, 58.93, 35.18, 29.66, 23.6, 13.03, 10.16, 6.52, 5.43, 5.97]) * 3600 * 1000  #convert to metrs per hours
     positions =  np.array([[0.0, 0.0], [0.31, 0.1], [0.72, 0.11], [1.0, 0.12], [1.56, 0.13], [5.21, 0.14], [9.05, 0.15], [20.0, 0.16], [30.09, 0.17], [30.5, 0.18]]) * 1.496e11
 
-    amount_repeat = 23
+    amount_repeat = 40
     solver = GravitationalSolver(weights.repeat(amount_repeat), speeds.repeat(amount_repeat), positions.repeat(amount_repeat, axis=0))
     #solver = GravitationalSolver(weights, speeds, positions)
 
-    max_time = 20
+    max_time = 100
     
     start_time = time.time()
     sol = solver.solve_verlet(max_time=max_time, dt=1e0)

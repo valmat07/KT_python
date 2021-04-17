@@ -56,6 +56,7 @@ def _clac_speed_prosess(N, amount_elements, init_speed, pos_queue, speed_queue, 
         speed_queue.put([speed_x[n + 1], speed_y[n + 1]])
     return_speed_queue.put([speed_x, speed_y])
 
+
 class GravitationalSolver():
     def __init__(self, weights, init_speed, init_position):
         
@@ -186,11 +187,11 @@ class GravitationalSolver():
         pos_thread.start()
         speed_thread.start()
 
-        pos_thread.join()
         x_pos, y_pos = return_pos_queue.get()
+        pos_thread.join()
 
-        speed_thread.join()
         speed_x, speed_y = return_speed_queue.get()
+        speed_thread.join()
 
         return np.concatenate((x_pos, y_pos, speed_x, speed_y), axis=-1)
 
@@ -205,13 +206,11 @@ class GravitationalSolver():
 
         pos_prosess.start()
         speed_prosess.start()
-
-        pos_prosess.join()
         x_pos, y_pos = return_pos_queue.get()
+        pos_prosess.join()
 
-        speed_prosess.join()
         speed_x, speed_y = return_speed_queue.get()
-
+        speed_prosess.join()
         return np.concatenate((x_pos, y_pos, speed_x, speed_y), axis=-1)
     
     def solve_verlet_cython(self, max_time, dt):

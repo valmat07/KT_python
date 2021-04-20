@@ -10,7 +10,7 @@ from functools import partial
 import cython_solve
 from multiprocessing import Process, Queue
 from threading import Thread
-
+from verlet_cl import calc_verlet_opencl
 dt = 1e0
 gravi_const = 6.6742 * 1e-11 * (3600 ** 2)
 global weights_mp
@@ -180,7 +180,7 @@ class GravitationalSolver():
         N = int(max_time / dt)
         pos_queue, speed_queue = Queue(), Queue()
         return_pos_queue, return_speed_queue = Queue(), Queue()
-        #create threads. First process for calc position, second for speeds
+        #create threads. First thread for calc position, second for speeds
         pos_thread = Thread(target=_calc_pos_prosess, args=(N, self.amount_elements, self.init_position, pos_queue, speed_queue, return_pos_queue))
         speed_thread = Thread(target=_clac_speed_prosess, args=(N, self.amount_elements, self.init_speed, pos_queue, speed_queue, return_speed_queue))
 
@@ -221,6 +221,15 @@ class GravitationalSolver():
                                             self.init_speed,
                                             self.weights
                                             )
+    def solve_verlet_cl(self, max_time, dt):
+        return calc_verlet_opencl(  
+                                    self.amount_elements, 
+                                    max_time, 
+                                    dt, 
+                                    self.init_position,
+                                    self.init_speed,
+                                    self.weights
+                                    )
 
     def plot_solution(self, solution, i):
         solution = solution[i]

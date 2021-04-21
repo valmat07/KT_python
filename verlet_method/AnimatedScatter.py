@@ -4,22 +4,23 @@ import numpy as np
 
 class AnimatedScatter(object):
     """An animated scatter plot using matplotlib.animations.FuncAnimation."""
-    def __init__(self, data, colors, interval=1):
+    def __init__(self, data, colors, scale, interval=1):
         self.data = data
         self.colors = colors
+        self.scale = scale
         # Setup the figure and axes...
         self.fig, self.ax = plt.subplots()
         # Then setup FuncAnimation.
         self.ani = animation.FuncAnimation(self.fig, self.update, interval=interval, 
-                                          init_func=self.setup_plot, blit=True)
+                                          init_func=self.setup_plot, blit=False)
 
 
     def setup_plot(self):
         """Initial drawing of the scatter plot."""
         x, y = self.data[0, 0], self.data[1, 0]
-        self.scat = self.ax.scatter(x, y, c=self.colors)
+        self.scat = self.ax.scatter(x, y, s=self.scale, c=self.colors)
 
-        self.ax.axis([-10, 10, -10, 10])
+        self.ax.axis([-2, 2, -2, 2])
         # For FuncAnimation's sake, we need to return the artist we'll be using
         # Note that it expects a sequence of artists, thus the trailing comma.
         return self.scat,

@@ -18,34 +18,13 @@ if __name__ == '__main__':
     #solver = GravitationalSolver(weights.repeat(amount_repeat), speeds.repeat(amount_repeat), positions.repeat(amount_repeat, axis=0))
     solver = GravitationalSolver(weights, speeds, positions)
 
-    max_time = 1000
+    max_time = 10000
 
-    start_time = time.time()
-    sol_cl = solver.solve_verlet_cl(max_time=max_time, dt=1e0)
-    print("--- %s seconds(openCL) ---\n\n" % (time.time() - start_time))
-    
+
     start_time = time.time()
     sol = solver.solve_verlet(max_time=max_time, dt=1e0)
     print("--- %s seconds(pure) ---\n\n" % (time.time() - start_time))
-    print(np.sum((sol - sol_cl) ** 2))
-    exit()
-    start_time = time.time()
-    sol_mt = solver.solve_verlet_multitasking(max_time=max_time, dt=1e0)
-    print("--- %s seconds(multiprocessing) ---\n\n" % (time.time() - start_time))
 
-    start_time = time.time()
-    sol_pool = solver.solve_verlet_threading_pool(max_time=max_time, dt=1e0)
-    print("--- %s seconds(threadin_pool) --- \n\n" % (time.time() - start_time))
-
-    start_time = time.time()
-    sol = solver.solve_verlet_threading(max_time=max_time, dt=1e0)
-    print("--- %s seconds(threadin) --- \n\n" % (time.time() - start_time))
-
-    start_time = time.time()
-    sol = solver.solve_verlet_cython(max_time=max_time, dt=1e0)
-    print("--- %s seconds(cython) ---" % (time.time() - start_time))
-    exit()
-    #sol = solver.solve_odeint()
     pos_x, pos_y = sol[:, :10], sol[:, 10:20] 
 
     amount_planets = 10
@@ -60,6 +39,6 @@ if __name__ == '__main__':
             [0.8, 0.0, 0.3],
             [0.0, 0.3, 0.6]
     ]
-
-    anim = AnimatedScatter(np.array([pos_x[::10]/ 1.496e11, pos_y[::10]/ 1.496e11]), colors=colors)
-    plt.show()
+    scale = np.array([2., 0.3, 0.35, 0.45, 0.6, 0.75, 0.9, 1.1, 1.3, 0.2]) * 10
+    anim = AnimatedScatter(np.array([pos_x[::100]/ 1.496e11, pos_y[::100]/ 1.496e11]), scale=scale, colors=colors).ani
+    anim.save('solar_sytem_verlet.gif', writer='imagemagick')

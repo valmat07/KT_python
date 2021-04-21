@@ -28,6 +28,16 @@ def _calc_accelerations_mp(x_pos, y_pos, amount_elements, i):
     return v_equation_x, v_equation_y
 
 def _calc_pos_prosess(N, amount_elements, init_position, pos_queue, speed_queue, return_pos_queue):
+    '''
+        Special function for multiprocessing. This necessery due to processes couldnt call same function from class
+        Parametrs:
+            N (int) - amount points in time
+            amount_elements - amount elements
+            init_speed (1d array) - initial speed (y coord) for elements
+            pos_queue (Queue) - queue for pass and get position between processes
+            speed_queue (Queue) - queue for pass and get speeds between processes
+            return_pos_queue (Queue) - queue for collecting result positions in main process
+    '''
     x_pos = np.zeros((N, amount_elements))
     y_pos = np.zeros((N, amount_elements))
     x_pos[0], y_pos[0] = init_position[:, 0], init_position[:, 1]
@@ -43,6 +53,16 @@ def _calc_pos_prosess(N, amount_elements, init_position, pos_queue, speed_queue,
     return_pos_queue.put([x_pos, y_pos])
 
 def _clac_speed_prosess(N, amount_elements, init_speed, pos_queue, speed_queue, return_speed_queue):
+    '''
+        Special function for multiprocessing. This necessery due to processes couldnt call same function from class
+        Parametrs:
+            N (int) - amount points in time
+            amount_elements - amount elements
+            init_speed (1d array) - initial speed (y coord) for elements
+            pos_queue (Queue) - queue for pass and get position between processes
+            speed_queue (Queue) - queue for pass and get speeds between processes
+            return_speed_queue (Queue) - queue for collecting result speed in main process
+    '''
     speed_x = np.zeros((N, amount_elements))
     speed_y = np.zeros((N, amount_elements))
     speed_x[0], speed_y[0] = np.zeros(amount_elements), init_speed
@@ -64,15 +84,25 @@ class GravitationalSolver():
         self.gravi_const = 6.6742 * 1e-11 * (3600 ** 2) #metrs^3 hours^-2 kilo^-1
         self.weights = weights
         global weights_mp
-        weights_mp = weights
+        weights_mp = weights #for multiprocessing
         self.init_speed = init_speed
         self.init_position = init_position
 
-    def solve_odeint(self):
-        t = np.linspace(0, 1000, 1000)
+    def solve_odeint(self, max_time, dt):
+        '''
+            Solves the gravitational problem of N bodies by the odeint method
+            
+            Parametrs:
+                max_time - max time in hours
+                dt - delata in time
+            
+            Returns:
+                sol - solution by odeint. It's array that contains x coord, y coord, speed for x coord, speed for y coord,
+                      so shape is (max_time/dt, 4*amount_elemnets)
+
+        '''
+        t = np.linspace(0, max_time, int(max_time/dt))
         init_cond = np.concatenate((self.init_position[:, 0], self.init_position[:, 1], np.zeros(10), self.init_speed))
-        #solution_class = solve_ivp(self._ode_equation, t, init_cond, dense_output=True)
-        #sol = solution_class.sol(t).T
         sol = odeint(self._ode_equation, init_cond, t)
         return sol
         
@@ -96,6 +126,18 @@ class GravitationalSolver():
         return dydt
 
     def _calc_accelerations(self, x_pos, y_pos, i):
+        '''
+            Calculate accelerations for specific element according to formula.
+
+            Parametrs:
+                x_pos - array that contains x coordinates of all elements for current time
+                y_pos - array that contains y coordinates of all elements for current time
+                i - index of specific element
+            
+            Returns:
+                v_equation_x - acceleration for x coordiante
+                v_equation_y - acceleration for y coordiante
+        '''
         
         v_equation_x, v_equation_y = 0, 0
         for j in range(self.amount_elements):
@@ -109,6 +151,18 @@ class GravitationalSolver():
         return v_equation_x, v_equation_y
 
     def solve_verlet(self, max_time, dt):
+        '''     
+            Implementation of the verlet method for the gravitational problem of N bodies.
+
+            Parametrs:
+                max_time - max time in hours
+                dt - delata in time
+            
+            Returns:
+                sol - solution by odeint. It's array that contains x coord, y coord, speed for x coord, speed for y coord,
+                      so shape is (max_time/dt, 4*amount_elemnets)
+
+        '''
         N = int(max_time / dt)
         x_pos = np.zeros((N, self.amount_elements))
         y_pos = np.zeros((N, self.amount_elements))
@@ -132,6 +186,18 @@ class GravitationalSolver():
         return np.concatenate((x_pos, y_pos, speed_x, speed_y), axis=-1)
 
     def solve_verlet_threading_pool(self, max_time, dt):
+        '''
+            Implementation of the verlet method using thread pool for the gravitational problem of N bodies.
+
+            Parametrs:
+                max_time - max time in hours
+                dt - delata in time
+            
+            Returns:
+                sol - solution by odeint. It's array that contains x coord, y coord, speed for x coord, speed for y coord,
+                      so shape is (max_time/dt, 4*amount_elemnets)
+
+        '''
         def _calc_positions_verlet(x_pos_curr, y_pos_curr, speed_x_curr, speed_y_curr, i, n):
             acceleration_x[i], acceleration_y[i] = self._calc_accelerations(x_pos_curr, y_pos_curr, i)
             x_pos[n + 1, i] = x_pos_curr[i] + speed_x_curr[i] * dt + acceleration_x[i] * (dt ** 2) / 2
@@ -177,6 +243,19 @@ class GravitationalSolver():
         return np.concatenate((x_pos, y_pos, speed_x, speed_y), axis=-1)
     
     def solve_verlet_threading(self, max_time, dt):
+        '''
+            Implementation of the verlet method with 2 threads for the gravitational problem of N bodies.
+            First thread calc positions, second for speed. They are communicate using queues. (slight acceleration)
+
+            Parametrs:
+                max_time - max time in hours
+                dt - delata in time
+            
+            Returns:
+                sol - solution by odeint. It's array that contains x coord, y coord, speed for x coord, speed for y coord,
+                      so shape is (max_time/dt, 4*amount_elemnets)
+
+        '''
         N = int(max_time / dt)
         pos_queue, speed_queue = Queue(), Queue()
         return_pos_queue, return_speed_queue = Queue(), Queue()
@@ -187,6 +266,7 @@ class GravitationalSolver():
         pos_thread.start()
         speed_thread.start()
 
+        #first gets answer due to problem with queue for a lot of elements
         x_pos, y_pos = return_pos_queue.get()
         pos_thread.join()
 
@@ -197,6 +277,19 @@ class GravitationalSolver():
 
 
     def solve_verlet_multitasking(self, max_time, dt):
+        '''
+            Implementation of the verlet method with 2 processes for the gravitational problem of N bodies.
+            First process calc positions, second for speed. They are communicate using queues. (double acceleration)
+
+            Parametrs:
+                max_time - max time in hours
+                dt - delata in time
+            
+            Returns:
+                sol - solution by odeint. It's array that contains x coord, y coord, speed for x coord, speed for y coord,
+                      so shape is (max_time/dt, 4*amount_elemnets)
+
+        '''
         N = int(max_time / dt)
         pos_queue, speed_queue = Queue(), Queue()
         return_pos_queue, return_speed_queue = Queue(), Queue()
@@ -206,6 +299,8 @@ class GravitationalSolver():
 
         pos_prosess.start()
         speed_prosess.start()
+
+        #first gets answer due to problem with queue for a lot of elements
         x_pos, y_pos = return_pos_queue.get()
         pos_prosess.join()
 
@@ -214,25 +309,46 @@ class GravitationalSolver():
         return np.concatenate((x_pos, y_pos, speed_x, speed_y), axis=-1)
     
     def solve_verlet_cython(self, max_time, dt):
-        return cython_solve.cypthon_solve(max_time, 
+        '''
+            Important!!! To use this function you need to run setup.py script.
+
+            Implementation of the verlet method using Cython implementation for the gravitational problem of N bodies.
+
+            Parametrs:
+                max_time - max time in hours
+                dt - delata in time
+            
+            Returns:
+                sol - solution by odeint. It's array that contains x coord, y coord, speed for x coord, speed for y coord,
+                      so shape is (max_time/dt, 4*amount_elemnets)
+
+        '''
+        return cython_solve.cypthon_solve(  max_time, 
                                             dt, 
                                             self.amount_elements, 
                                             self.init_position,
                                             self.init_speed,
                                             self.weights
                                             )
+    
     def solve_verlet_cl(self, max_time, dt):
-        return calc_verlet_opencl(  
-                                    self.amount_elements, 
+        '''
+
+            Implementation of the verlet method using Opencl implementation for the gravitational problem of N bodies.
+
+            Parametrs:
+                max_time - max time in hours
+                dt - delata in time
+            
+            Returns:
+                sol - solution by odeint. It's array that contains x coord, y coord, speed for x coord, speed for y coord,
+                      so shape is (max_time/dt, 4*amount_elemnets)
+
+        '''
+        return calc_verlet_opencl(  self.amount_elements, 
                                     max_time, 
                                     dt, 
                                     self.init_position,
                                     self.init_speed,
                                     self.weights
                                     )
-
-    def plot_solution(self, solution, i):
-        solution = solution[i]
-        positions_x, positions_y = solution[:self.amount_elements], solution[self.amount_elements:2*self.amount_elements]
-        plt.scatter(positions_x / 1.496e11, positions_y / 1.496e11)
-        plt.show()

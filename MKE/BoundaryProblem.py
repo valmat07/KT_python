@@ -9,7 +9,7 @@ class BoundaryProblem():
         self.eps = 1e-10
         self.alfa = 1
 
-    def solve_problem(self, h_val, g_val, f_val, txt, formula):
+    def solve_problem(self, h_func, g_func, f_func):
         def boundary_D(x, on_boundary):
             if near(x[0]**2 + x[1]**2, self.radius**2, self.eps) and x[1] > 0.0:
                 return True
@@ -20,16 +20,16 @@ class BoundaryProblem():
         mesh = generate_mesh(domain, self.amount_fragments, "cgal")
 
         V = FunctionSpace(mesh, 'P', 1)
-        h = Expression(h_val, degree=2)
-        g = Expression(g_val, R = self.radius, degree=2)
-        f = Expression(f_val, alfa = self.alfa, degree=2)
+        h = Expression(h_func, degree=2)
+        g = Expression(g_func, R = self.radius, degree=2)
+        f = Expression(f_func, alfa = self.alfa, degree=2)
 
         bc = DirichletBC(V, h, boundary_D)
 
         u = TrialFunction(V)
         v = TestFunction(V)
         
-        a = (dot(grad(u), grad(v)) + self.alfa * u * v)*dx
+        a = (dot(grad(u), grad(v)) + self.alfa * u * v) * dx
         L = f * v * dx + g * v *ds
         u = Function(V)
         solve(a == L, u, bc)

@@ -75,7 +75,7 @@ class PlotSolutions():
         plt.style.use('classic')
 
         self.fig = plt.figure(figsize=(7, 7))
-        plt.suptitle(func_name)
+        plt.suptitle(func_name, fontsize=20)
         self.max_u = zface_u.max()
         self.max_u_D = zface_u_D.max()
 
